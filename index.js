@@ -109,27 +109,43 @@ function processSystemAuditing(historyList) {
 }
 
 app.get('/', (req, res) => {
-    res.status(200).send("[HOANGDZ CORE] Proxy Bypass Mode is Online.");
+    res.status(200).send("[HOANGDZ CORE] High-Performance Engine is Running.");
 });
 
-// ---------------- ENDPOINT 1: PHÂN TÍCH CHÍNH (ĐÃ BYPASS 403) ----------------
+// ---------------- ENDPOINT 1: PHÂN TÍCH CHÍNH (ĐÃ TĂNG TIMEOUT & PROXY MỚI) ----------------
 app.get('/api/analysis', async (req, res) => {
-    // Thử tuần tự các cổng trung gian để đảm bảo tỷ lệ sống 100%
     const targetUrl = 'https://www.vnsodo.club/api/front/lottery/lastlottery?gameId=173';
+    
+    // Đa dạng hóa các cổng kết nối tốc độ cao để chống nghẽn
     const proxyGateways = [
+        `https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}`,
         `https://corsproxy.io/?${encodeURIComponent(targetUrl)}`,
-        `https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}`
+        targetUrl // Thử kết nối trực tiếp phòng khi tường lửa nhả IP
     ];
 
     let responseData = null;
     let fetchError = null;
 
+    // Duyệt qua các cổng, tăng timeout lên 20000ms (20 giây) để chờ proxy xử lý ổn định
     for (let url of proxyGateways) {
         try {
-            const response = await axios.get(url, { timeout: 12000 });
-            if (response.data && response.data.data) {
-                responseData = response.data;
-                break; // Lấy được dữ liệu thì thoát vòng lặp ngay
+            const config = { timeout: 20000 };
+            if (url === targetUrl) {
+                config.headers = {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+                };
+            }
+            const response = await axios.get(url, config);
+            
+            // Xử lý dữ liệu trả về tùy theo định dạng proxy
+            let data = response.data;
+            if (typeof data === 'string' && data.startsWith('{')) {
+                data = JSON.parse(data);
+            }
+            
+            if (data && data.data?.historyList) {
+                responseData = data;
+                break;
             }
         } catch (err) {
             fetchError = err.message;
@@ -139,7 +155,7 @@ app.get('/api/analysis', async (req, res) => {
     if (!responseData || !responseData.data?.historyList) {
         return res.status(500).json({ 
             status: "error", 
-            message: "Tường lửa nhà cái quá mạnh hoặc đường truyền nghẽn.",
+            message: "Tất cả các cổng kết nối trung gian đang bị quá tải hoặc nhà cái chặn gắt. Hãy thử lại sau vài giây.",
             trace: fetchError
         });
     }
@@ -167,7 +183,7 @@ app.get('/api/analysis', async (req, res) => {
     res.json({
         status: "success",
         gameId: "173",
-        engine_signature: "HOANGDZ_NEURAL_LOGIC_V2_BYPASS",
+        engine_signature: "HOANGDZ_NEURAL_LOGIC_V3",
         execution_time: new Date().toISOString(),
         current_live_data: {
             period: currentLiveResult.issueNum,
