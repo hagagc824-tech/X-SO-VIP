@@ -3,24 +3,18 @@ const express = require('express');
 const axios = require('axios');
 const app = express();
 
-// Render tự động cấp port qua process.env.PORT, mặc định nếu chạy local là 10000
 const PORT = process.env.PORT || 10000;
 
 app.use(express.json());
 
-// Cấu hình Header cho phép truy cập (CORS) từ mọi nguồn
 app.use((req, res, next) => {
     res.header("Access-Control-Allow-Origin", "*");
     res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
     next();
 });
 
-// Bộ nhớ đệm tạm thời lưu lịch sử phân tích đối chiếu Đúng/Sai
 let predictionStorage = [];
 
-/**
- * THUẬT TOÁN PHÂN TÍCH MA TRẬN SỐ NÂNG CAO (KHÔNG NGẪU NHIÊN)
- */
 function advancedLotteryEngine(historyList) {
     if (!historyList || historyList.length < 5) return null;
 
@@ -113,7 +107,6 @@ function advancedLotteryEngine(historyList) {
     };
 }
 
-// HÀM ĐỐI CHIẾU KẾT QUẢ THỰC TẾ & XỬ LÝ LỆNH TRẠNG THÁI WIN/LOSS
 function processSystemAuditing(historyList) {
     if (!historyList || historyList.length === 0) return;
 
@@ -146,7 +139,6 @@ function processSystemAuditing(historyList) {
     });
 }
 
-// ---------------- ROOT ENDPOINT (Giúp Render Health Check thành công, chống lỗi Timed Out) ----------------
 app.get('/', (req, res) => {
     res.status(200).send("[HOANGDZ CORE] API Server is running online perfectly.");
 });
@@ -154,16 +146,28 @@ app.get('/', (req, res) => {
 // ---------------- ENDPOINT 1: PHÂN TÍCH CHÍNH & TẠO KỲ DỰ ĐOÁN MỚI ----------------
 app.get('/api/analysis', async (req, res) => {
     try {
+        // Cấu hình bộ Header giả lập giống 100% Chrome thật để bypass 403
         const response = await axios.get('https://www.vnsodo.club/api/front/lottery/lastlottery?gameId=173', {
             headers: { 
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' 
+                'accept': 'application/json, text/plain, */*',
+                'accept-language': 'vi-VN,vi;q=0.9,en-US;q=0.8,en;q=0.7',
+                'cache-control': 'no-cache',
+                'pragma': 'no-cache',
+                'sec-ch-ua': '"Not/A)Brand";v="8", "Chromium";v="126", "Google Chrome";v="126"',
+                'sec-ch-ua-mobile': '?0',
+                'sec-ch-ua-platform': '"Windows"',
+                'sec-side-navigation-status': 'OK',
+                'sec-fetch-dest': 'empty',
+                'sec-fetch-mode': 'cors',
+                'sec-fetch-site': 'same-origin',
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36'
             },
-            timeout: 10000 // Giới hạn 10s tránh treo kết nối từ API gốc
+            timeout: 15000
         });
         
         const historyList = response.data?.data?.historyList;
         if (!historyList || historyList.length === 0) {
-            return res.status(404).json({ status: "error", message: "Không thể trích xuất dữ liệu mảng lịch sử từ nguồn." });
+            return res.status(404).json({ status: "error", message: "Không thể lấy dữ liệu lịch sử. Có thể cấu hình API gốc đã đổi cấu trúc." });
         }
 
         processSystemAuditing(historyList);
@@ -201,11 +205,15 @@ app.get('/api/analysis', async (req, res) => {
         });
 
     } catch (error) {
-        res.status(500).json({ status: "error", code: 500, trace: error.message });
+        res.status(500).json({ 
+            status: "error", 
+            code: 500, 
+            message: "Hệ thống tường lửa đích đã chặn kết nối Cloud (403). Hãy thử lại hoặc cập nhật proxy.",
+            trace: error.message 
+        });
     }
 });
 
-// ---------------- ENDPOINT 2: LINK XEM ĐÚNG SAI / LỊCH SỬ ĐỐI CHIẾU KẾT QUẢ ----------------
 app.get('/api/history', (req, res) => {
     res.json({
         status: "success",
@@ -214,7 +222,6 @@ app.get('/api/history', (req, res) => {
     });
 });
 
-// ---------------- ENDPOINT 3: THỐNG KÊ HIỆU SUẤT THẮNG/THUA CHÍNH XÁC ----------------
 app.get('/api/accuracy', (req, res) => {
     const closedSessions = predictionStorage.filter(item => item.status !== "Chờ kết quả");
     if (closedSessions.length === 0) {
@@ -237,7 +244,6 @@ app.get('/api/accuracy', (req, res) => {
     });
 });
 
-// Cấu hình bắt buộc để nhận mọi IP kết nối từ môi trường Cloud của Render
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`[HOANGDZ CORE] API Server running stability on port: ${PORT}`);
 });
