@@ -1,8 +1,14 @@
+
 const express = require('express');
 const axios = require('axios');
 const app = express();
-const PORT = process.env.PORT || 3000;
 
+// Render tự động cấp port qua process.env.PORT, mặc định nếu chạy local là 10000
+const PORT = process.env.PORT || 10000;
+
+app.use(express.json());
+
+// Cấu hình Header cho phép truy cập (CORS) từ mọi nguồn
 app.use((req, res, next) => {
     res.header("Access-Control-Allow-Origin", "*");
     res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
@@ -14,20 +20,14 @@ let predictionStorage = [];
 
 /**
  * THUẬT TOÁN PHÂN TÍCH MA TRẬN SỐ NÂNG CAO (KHÔNG NGẪU NHIÊN)
- * Bao gồm:
- * 1. Delta Step Analysis (Nhịp nhảy tuyến tính)
- * 2. Frequency Weighting (Trọng số tần suất xuất hiện)
- * 3. Fibonacci Cycle Filter (Bộ lọc chu kỳ lặp lại)
- * 4. Markov Chain Probability (Dự đoán dựa trên trạng thái liền kề)
  */
 function advancedLotteryEngine(historyList) {
     if (!historyList || historyList.length < 5) return null;
 
     const latestResult = historyList[0];
     const latestNumbers = latestResult.lotteryNum.split(',').map(n => parseInt(n.trim()));
-    const totalPositions = latestNumbers.length; // Số lượng vị trí trong chuỗi kết quả (ví dụ: 4 hoặc 5 số)
+    const totalPositions = latestNumbers.length;
 
-    // --- LỚP PHÂN TÍCH 1: THỐNG KÊ TẦN SUẤT & MẬT ĐỘ PHÂN PHỐI ---
     let frequencyMap = {};
     let positionFrequency = Array.from({ length: totalPositions }, () => ({}));
 
@@ -36,9 +36,7 @@ function advancedLotteryEngine(historyList) {
         let nums = period.lotteryNum.split(',').map(n => n.trim());
         
         nums.forEach((num, index) => {
-            // Tần suất tổng
             frequencyMap[num] = (frequencyMap[num] || 0) + 1;
-            // Tần suất theo từng vị trí cố định
             if (index < totalPositions) {
                 positionFrequency[index][num] = (positionFrequency[index][num] || 0) + 1;
             }
@@ -48,14 +46,12 @@ function advancedLotteryEngine(historyList) {
     let hotNumbers = Object.keys(frequencyMap).sort((a, b) => frequencyMap[b] - frequencyMap[a]);
     let coldNumbers = Object.keys(frequencyMap).sort((a, b) => frequencyMap[a] - frequencyMap[b]);
 
-    // --- LỚP PHÂN TÍCH 2: HỒI QUY TUYẾN TÍNH & ĐỘ LỆCH BIÊN ĐỘ (DELTA ANALYSIS) ---
     let predictedNumbers = [];
     
     for (let pos = 0; pos < totalPositions; pos++) {
         let deltaSum = 0;
         let weightSum = 0;
         
-        // Phân tích sâu tối đa 15 kỳ gần nhất để tính toán bước nhảy gia tốc
         let sampleLimit = Math.min(historyList.length - 1, 15);
         for (let i = 0; i < sampleLimit; i++) {
             if (historyList[i] && historyList[i + 1]) {
@@ -64,8 +60,6 @@ function advancedLotteryEngine(historyList) {
                 
                 if (currentArr[pos] !== undefined && prevArr[pos] !== undefined) {
                     let diff = currentArr[pos] - prevArr[pos];
-                    
-                    // Cơ chế áp trọng số: Các kỳ càng gần trọng số toán học càng cao (Giảm dần theo cấp số cộng)
                     let weight = sampleLimit - i; 
                     deltaSum += diff * weight;
                     weightSum += weight;
@@ -73,14 +67,11 @@ function advancedLotteryEngine(historyList) {
             }
         }
 
-        // Tính toán bước nhảy dịch chuyển trung bình có trọng số
         let calculatedDelta = weightSum > 0 ? Math.round(deltaSum / weightSum) : 1;
         
-        // --- LỚP PHÂN TÍCH 3: ÁP DỤNG CHU KỲ SỐ FIBONACCI ĐỂ KHỬ SAI SỐ LẶP LẠI ---
         let currentNum = latestNumbers[pos];
         let basePrediction = currentNum + calculatedDelta;
         
-        // Phân tích quy luật Fibonacci lặp lại để tinh chỉnh biên độ số dư
         let fiboModifiers = [1, 1, 2, 3, 5, 8];
         let modifierIndex = Math.abs(calculatedDelta) % fiboModifiers.length;
         if (calculatedDelta < 0) {
@@ -89,22 +80,17 @@ function advancedLotteryEngine(historyList) {
             basePrediction += fiboModifiers[modifierIndex];
         }
 
-        // Chuẩn hóa kết quả theo hệ cơ số số học (Giới hạn từ 0 đến 9)
         let finalNum = basePrediction % 10;
         if (finalNum < 0) finalNum += 10;
         
         predictedNumbers.push(finalNum.toString().padStart(2, '0'));
     }
 
-    // --- LỚP PHÂN TÍCH 4: THỐNG KÊ TOÁN HỌC KHỐI ĐỂ DỰ ĐOÁN TÀI/XỈU & CHẴN/LẺ ---
     let totalPredictedSum = predictedNumbers.reduce((acc, curr) => acc + parseInt(curr), 0);
-    
-    // Ngưỡng phân chia Tài Xỉu toán học bằng: (Số vị trí số * Giá trị trần 9) / 2
     let threshold = (totalPositions * 9) / 2;
     let taiXiuPrediction = totalPredictedSum >= threshold ? "Tài" : "Xỉu";
     let chanLePrediction = totalPredictedSum % 2 === 0 ? "Chẵn" : "Lẻ";
 
-    // Tính toán tỷ lệ tin cậy dựa trên độ lệch chuẩn (Standard Deviation) của biên độ số
     let varianceSum = 0;
     latestNumbers.forEach(n => {
         varianceSum += Math.pow(n - (totalPredictedSum / totalPositions), 2);
@@ -134,7 +120,6 @@ function processSystemAuditing(historyList) {
     predictionStorage.forEach(auditTarget => {
         if (auditTarget.status !== "Chờ kết quả") return;
 
-        // Tìm kiếm bản ghi trùng khớp kỳ trong lịch sử trả về từ nhà cái
         const actualRecord = historyList.find(historyItem => historyItem.issueNum === auditTarget.period);
 
         if (actualRecord) {
@@ -147,7 +132,6 @@ function processSystemAuditing(historyList) {
             let actualTaiXiu = actualSum >= actualThreshold ? "Tài" : "Xỉu";
             let actualChanLe = actualSum % 2 === 0 ? "Chẵn" : "Lẻ";
 
-            // So sánh độ chính xác logic toán học độc lập
             auditTarget.is_tai_xiu_correct = (auditTarget.predict_tai_xiu === actualTaiXiu);
             auditTarget.is_chan_le_correct = (auditTarget.predict_chan_le === actualChanLe);
             
@@ -162,13 +146,19 @@ function processSystemAuditing(historyList) {
     });
 }
 
+// ---------------- ROOT ENDPOINT (Giúp Render Health Check thành công, chống lỗi Timed Out) ----------------
+app.get('/', (req, res) => {
+    res.status(200).send("[HOANGDZ CORE] API Server is running online perfectly.");
+});
+
 // ---------------- ENDPOINT 1: PHÂN TÍCH CHÍNH & TẠO KỲ DỰ ĐOÁN MỚI ----------------
 app.get('/api/analysis', async (req, res) => {
     try {
         const response = await axios.get('https://www.vnsodo.club/api/front/lottery/lastlottery?gameId=173', {
             headers: { 
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' 
-            }
+            },
+            timeout: 10000 // Giới hạn 10s tránh treo kết nối từ API gốc
         });
         
         const historyList = response.data?.data?.historyList;
@@ -176,14 +166,11 @@ app.get('/api/analysis', async (req, res) => {
             return res.status(404).json({ status: "error", message: "Không thể trích xuất dữ liệu mảng lịch sử từ nguồn." });
         }
 
-        // Chạy tiến trình đối soát kiểm tra đúng sai kỳ cũ trước
         processSystemAuditing(historyList);
 
-        // Đưa dữ liệu qua lõi thuật toán phân tích ma trận
         const systemEngineOutput = advancedLotteryEngine(historyList);
         const currentLiveResult = historyList[0];
 
-        // Đăng ký lưu trữ dữ liệu nếu kỳ mới chưa có trong hàng đợi
         if (!predictionStorage.some(item => item.period === systemEngineOutput.next_period)) {
             predictionStorage.unshift({
                 period: systemEngineOutput.next_period,
@@ -197,7 +184,6 @@ app.get('/api/analysis', async (req, res) => {
                 created_at: new Date().toISOString()
             });
 
-            // Ngăn chặn rò rỉ bộ nhớ (Memory Leak) khi lưu quá nhiều dữ liệu trên Render Free RAM
             if (predictionStorage.length > 150) predictionStorage.pop();
         }
 
@@ -251,6 +237,7 @@ app.get('/api/accuracy', (req, res) => {
     });
 });
 
-app.listen(PORT, () => {
+// Cấu hình bắt buộc để nhận mọi IP kết nối từ môi trường Cloud của Render
+app.listen(PORT, '0.0.0.0', () => {
     console.log(`[HOANGDZ CORE] API Server running stability on port: ${PORT}`);
 });
