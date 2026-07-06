@@ -2,18 +2,12 @@
   "name": "ultimate-machine-prediction",
   "version": "3.0.0",
   "description": "Siêu bộ máy dự đoán tài xỉu thế hệ mới - AI Powered",
-  "main": "index.js",
+  "main": "Scr.js",
   "scripts": {
-    "start": "node index.js",
-    "dev": "nodemon index.js"
+    "start": "node Scr.js",
+    "dev": "nodemon Scr.js"
   },
-  "keywords": [
-    "express",
-    "bot",
-    "prediction",
-    "api",
-    "realtime"
-  ],
+  "keywords": [],
   "author": "@tranhoang2286",
   "license": "ISC",
   "dependencies": {
