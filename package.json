@@ -4,8 +4,8 @@
   "description": "Siêu bộ máy dự đoán tài xỉu thế hệ mới - AI Powered",
   "main": "Scr.js",
   "scripts": {
-    "start": "node Scr.js",
-    "dev": "nodemon Scr.js"
+    "start": "node index.js",
+    "dev": "nodemon index.js"
   },
   "keywords": [],
   "author": "@tranhoang2286",
